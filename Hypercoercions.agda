@@ -354,37 +354,37 @@ module Hypercoercions where
           ------------------------ meta-hc
         → Δ ; Θ ⊢ᵐ A ⇒ C
 
-    -- data MHeadMiddleTail {Δ} (Θ : SubCtx Δ) (A B : MType Δ) : Set where
-    --   head : Δ ⊢ᵐʰ A ⇒ B → MHeadMiddleTail Θ A B
-    --   middle : Δ ; Θ ⊢ᵐᵐ A ⇒ B → MHeadMiddleTail Θ A B
-    --   tail : Δ ⊢ᵐᵗ A ⇒ B → MHeadMiddleTail Θ A B
+    data MHeadMiddleTail {Δ} (Θ : SubCtx Δ) (A B : MType Δ) : Set where
+      head : Δ ⊢ᵐʰ A ⇒ B → MHeadMiddleTail Θ A B
+      middle : Δ ; Θ ⊢ᵐᵐ A ⇒ B → MHeadMiddleTail Θ A B
+      tail : Δ ⊢ᵐᵗ A ⇒ B → MHeadMiddleTail Θ A B
 
-    -- _⊢_⨟ᵐᵗʰ_ : ∀ {Δ A B C}
-    --   → (Θ : SubCtx Δ)
-    --   → Δ ⊢ᵐᵗ A ⇒ B
-    --   → Δ ⊢ᵐʰ B ⇒ C
-    --   → MHeadMiddleTail Θ A C
-    -- Θ ⊢ id A ⨟ᵐᵗʰ h = head h
-    -- Θ ⊢ ((G ！) g) ⨟ᵐᵗʰ id ⋆ = tail ((G ！) g)
-    -- Θ ⊢ ((G₁ ！) g₁) ⨟ᵐᵗʰ ((G₂ ？ ℓ) g₂) with G₁ ≡? G₂
-    -- ... | yes refl = head (id G₁)
-    -- ... | no _ = middle (err G₁ G₂ ℓ)
+    _⊢_⨟ᵐᵗʰ_ : ∀ {Δ A B C}
+      → (Θ : SubCtx Δ)
+      → Δ ⊢ᵐᵗ A ⇒ B
+      → Δ ⊢ᵐʰ B ⇒ C
+      → MHeadMiddleTail Θ A C
+    Θ ⊢ id A ⨟ᵐᵗʰ h = head h
+    Θ ⊢ ((G ！) g) ⨟ᵐᵗʰ id ⋆ = tail ((G ！) g)
+    Θ ⊢ ((G₁ ！) g₁) ⨟ᵐᵗʰ ((G₂ ？ ℓ) g₂) with G₁ ≡? G₂
+    ... | yes refl = head (id G₁)
+    ... | no _ = middle (err G₁ G₂ ℓ)
 
-    -- ⨟ᵐᵗʰ-tail-id-impossible : ∀ {Δ Θ A A′} {t₁ : Δ ⊢ᵐᵗ A ⇒ A′} {h₂ : Δ ⊢ᵐʰ A′ ⇒ A}
-    --   → ¬ (Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ ≡ tail (id A))
-    -- ⨟ᵐᵗʰ-tail-id-impossible {t₁ = id A} {h₂ = h₂} ()
-    -- ⨟ᵐᵗʰ-tail-id-impossible {Δ} {Θ} {t₁ = (G ！) g} {h₂ = (H ？ ℓ) h} eq with G ≡? H
-    -- ... | yes refl = λ ()
-    -- ... | no G≢H = λ ()
+    ⨟ᵐᵗʰ-tail-id-impossible : ∀ {Δ Θ A A′} {t₁ : Δ ⊢ᵐᵗ A ⇒ A′} {h₂ : Δ ⊢ᵐʰ A′ ⇒ A}
+      → ¬ (Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ ≡ tail (id A))
+    ⨟ᵐᵗʰ-tail-id-impossible {t₁ = id A} {h₂ = h₂} ()
+    ⨟ᵐᵗʰ-tail-id-impossible {Δ} {Θ} {t₁ = (G ！) g} {h₂ = (H ？ ℓ) h} eq with G ≡? H
+    ⨟ᵐᵗʰ-tail-id-impossible {Δ} {Θ} {_} {_} {(_ ！) g} {(_ ？ ℓ) h} () | yes refl
+    ⨟ᵐᵗʰ-tail-id-impossible {Δ} {Θ} {_} {_} {(_ ！) g} {(_ ？ ℓ) h} () | no G≢H
 
-    -- ⨟ᵐᵗʰ-middle-err : ∀ {Δ Θ A B C} {t₁ : Δ ⊢ᵐᵗ A ⇒ B} {h₂ : Δ ⊢ᵐʰ B ⇒ C} {m : Δ ; Θ ⊢ᵐᵐ A ⇒ C}
-    --   → Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ ≡ middle m
-    --   → Σ[ ℓ ∈ BlameLabel ] m ≡ err A C ℓ
-    -- ⨟ᵐᵗʰ-middle-err {t₁ = id A} {h₂ = h₂} ()
-    -- ⨟ᵐᵗʰ-middle-err {t₁ = (G ！) g} {h₂ = id ⋆} ()
-    -- ⨟ᵐᵗʰ-middle-err {t₁ = (G₁ ！) g₁} {h₂ = (G₂ ？ ℓ) g₂} {m = m} eq with G₁ ≡? G₂
-    -- ... | yes refl = λ ()
-    -- ... | no _ = ⟨ ℓ , refl ⟩
+    ⨟ᵐᵗʰ-middle-err : ∀ {Δ Θ A B C} {t₁ : Δ ⊢ᵐᵗ A ⇒ B} {h₂ : Δ ⊢ᵐʰ B ⇒ C} {m : Δ ; Θ ⊢ᵐᵐ A ⇒ C}
+      → Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ ≡ middle m
+      → Σ[ ℓ ∈ BlameLabel ] m ≡ err A C ℓ
+    ⨟ᵐᵗʰ-middle-err {t₁ = id A} {h₂ = h₂} ()
+    ⨟ᵐᵗʰ-middle-err {t₁ = (G ！) g} {h₂ = id ⋆} ()
+    ⨟ᵐᵗʰ-middle-err {t₁ = (G₁ ！) g₁} {h₂ = (G₂ ？ ℓ) g₂} {m = m} eq with G₁ ≡? G₂
+    ⨟ᵐᵗʰ-middle-err {C = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} () | yes refl
+    ⨟ᵐᵗʰ-middle-err {C = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} refl | no _ = ⟨ ℓ , refl ⟩
 
     -- _⊢_⨟ᵐᵐ_ : ∀ {Δ A B C}
     --   → (Θ : SubCtx Δ)
