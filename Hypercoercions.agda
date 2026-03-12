@@ -85,11 +85,6 @@ module Hypercoercions where
     Θ ⊢ e ！ ⨟ᵉᵗʰ id ⋆ = tail (e ！)
     Θ ⊢ id ê₁ ⨟ᵉᵗʰ h = head h
 
-    ⨟ᵉᵗʰ-tail-id⋆ : ∀ {Δ Θ ê₂ e} {t₁ : Δ ⊢ᵉᵗ ec e ⇒ ê₂} {h₂ : Δ ⊢ᵉʰ ê₂ ⇒ ⋆}
-      → Θ ⊢ t₁ ⨟ᵉᵗʰ h₂ ≡ tail (e ！)
-      → Σ[ ê₂≡⋆ ∈ ê₂ ≡ ⋆ ] subst (λ ê₂′ → Δ ⊢ᵉʰ ê₂′ ⇒ ⋆) ê₂≡⋆ h₂ ≡ id ⋆
-    ⨟ᵉᵗʰ-tail-id⋆ {t₁ = e ！} {h₂ = id ⋆} refl = ⟨ refl , refl ⟩
-
     ⨟ᵉᵗʰ-tail-id-impossible : ∀ {Δ Θ e e'} {t₁ : Δ ⊢ᵉᵗ e ⇒ e'} {h₂ : Δ ⊢ᵉʰ e' ⇒ e}
       → ¬ (Θ ⊢ t₁ ⨟ᵉᵗʰ h₂ ≡ tail (id e))
     ⨟ᵉᵗʰ-tail-id-impossible {t₁ = id e} {h₂ = h₂} ()
@@ -97,11 +92,30 @@ module Hypercoercions where
     ⨟ᵉᵗʰ-tail-id-impossible {Δ} {Θ} {_} {_} {_ ！} {_ ？ ℓ} () | yes e<:⋆e
     ... | no e≮:e = ⊥-elim (e≮:e (<:-ec <:-refl))
 
+    data IsErrEC {Δ Θ} {ê₁ ê₂ : EC⋆ Δ} : Δ ; Θ ⊢ᵉᵐ ê₁ ⇒ ê₂ → Set where
+      error : ∀ {ℓ} → IsErrEC (err ê₁ ê₂ ℓ)
+
+    ↑≢err : ∀ {Δ Θ ê₁ ê₂} {ê₁<:⋆ê₂ : Δ ; Θ ⊢ᵉ ê₁ <:⋆ ê₂} → ¬ IsErrEC (↑ ê₁<:⋆ê₂)
+    ↑≢err ()
+
+    mid-src-⋆→rest-⋆ : ∀ {Δ Θ ê₁ ê₂} {m : Δ ; Θ ⊢ᵉᵐ ⋆ ⇒ ê₁} {t : Δ ⊢ᵉᵗ ê₁ ⇒ ê₂}
+      → ¬ IsErrEC m
+      → ê₁ ≡ ⋆ × ê₂ ≡ ⋆
+    mid-src-⋆→rest-⋆ {m = ↑ <:-⋆} {t = id ⋆} m≢err = ⟨ refl , refl ⟩
+    mid-src-⋆→rest-⋆ {m = err ê₁ ê₂ ℓ} m≢err = ⊥-elim (m≢err error)
+
+    mid-tgt-⋆→rest-⋆ : ∀ {Δ Θ ê₁ ê₂}{h : Δ ⊢ᵉʰ ê₁ ⇒ ê₂} {m : Δ ; Θ ⊢ᵉᵐ ê₂ ⇒ ⋆} 
+      → ¬ IsErrEC m
+      → ê₁ ≡ ⋆ × ê₂ ≡ ⋆
+    mid-tgt-⋆→rest-⋆ {h = id ⋆} {m = ↑ <:-⋆} m≢err = ⟨ refl , refl ⟩
+    mid-tgt-⋆→rest-⋆ {h = _ ？ _} {m = ↑ ()} _
+    mid-tgt-⋆→rest-⋆ {m = err ê₁ ê₂ ℓ} m≢err = ⊥-elim (m≢err error)
+
     _⨟ᵉᵐ_ : ∀ {Δ Θ ê₁ ê₂ ê₃}
       → Δ ; Θ ⊢ᵉᵐ ê₁ ⇒ ê₂ → Δ ; Θ ⊢ᵉᵐ ê₂ ⇒ ê₃ → Δ ; Θ ⊢ᵉᵐ ê₁ ⇒ ê₃
     ↑ ê₁<:⋆ê₂ ⨟ᵉᵐ ↑ ê₂<:⋆ê₃ = ↑ (<:⋆-trans ê₁<:⋆ê₂ ê₂<:⋆ê₃)
     ↑ {ê₁ = ê₁} ê₁<:⋆ê₂ ⨟ᵉᵐ err ê₂ ê₃ ℓ = err ê₁ ê₃ ℓ
-    _⨟ᵉᵐ_ {ê₃ = ê₃} (err ê₁ ê₂ ℓ)  m = err ê₁ ê₃ ℓ
+    (err ê₁ ê₂ ℓ) ⨟ᵉᵐ m = err ê₁ _ ℓ
 
     _⊢_⨟ᵉ_ : ∀ {Δ ê₁ ê₂ ê₃}
       → (Θ : SubCtx Δ)
@@ -113,13 +127,16 @@ module Hypercoercions where
     Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵉ h₂ ⨾ err ê₅ ê₆ ℓ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵉᵗʰ h₂
     ... | middle (err ê₃ ê₅ ℓ′) = h₁ ⨾ err _ ê₆ ℓ′ ⨾ t₂
     ... | _ = h₁ ⨾ err _ ê₆ ℓ ⨾ t₂
-    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵉ h₂ ⨾ m₂ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵉᵗʰ h₂ in eq
-    ... | middle (↑ ê₃<:⋆ê₂) = h₁ ⨾ (m₁ ⨟ᵉᵐ (↑ ê₃<:⋆ê₂ ⨟ᵉᵐ m₂)) ⨾ t₂
-    ... | head (id _) = h₁ ⨾ (m₁ ⨟ᵉᵐ m₂) ⨾ t₂
-    ... | tail (e ！) = h₁ ⨾ m₁ ⨾ {!!}
+    Θ ⊢ h₁ ⨾ ↑ ê₂<:⋆ê₄ ⨾ t₁ ⨟ᵉ h₂ ⨾ ↑ e<:⋆ê₅ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵉᵗʰ h₂ in eq
+    ... | middle (↑ ê₃<:⋆ê₂) = h₁ ⨾ (↑ ê₂<:⋆ê₄ ⨟ᵉᵐ (↑ ê₃<:⋆ê₂ ⨟ᵉᵐ ↑ e<:⋆ê₅)) ⨾ t₂
+    ... | head (id _) = h₁ ⨾ (↑ ê₂<:⋆ê₄ ⨟ᵉᵐ ↑ e<:⋆ê₅) ⨾ t₂
     ... | tail (id e) = ⊥-elim (⨟ᵉᵗʰ-tail-id-impossible {t₁ = t₁} {h₂ = h₂} eq)
-    ... | head (e ？ ℓ) = {!!} ⨾ m₂ ⨾ t₂
     ... | middle (err ê₃ ê₅ ℓ) = h₁ ⨾ err _ _ ℓ ⨾ t₂
+    ... | head (e ？ ℓ) with mid-tgt-⋆→rest-⋆ {h = h₁} {m = ↑ ê₂<:⋆ê₄} ↑≢err
+    ...   | ⟨ refl , refl ⟩ = e ？ ℓ ⨾ ↑ e<:⋆ê₅ ⨾ t₂
+    Θ ⊢ h₁ ⨾ ↑ ê₂<:⋆ê₄ ⨾ t₁ ⨟ᵉ h₂ ⨾ ↑ e<:⋆ê₅ ⨾ t₂
+        | tail (e ！) with mid-src-⋆→rest-⋆ {m = ↑ e<:⋆ê₅} {t = t₂} ↑≢err
+    ...   | ⟨ refl , refl ⟩ = h₁ ⨾ ↑ ê₂<:⋆ê₄ ⨾ e ！
 
   open ECHypercoercions public
 
@@ -215,6 +232,24 @@ module Hypercoercions where
     ⨟ᵒᵗʰ-middle-err {O₃ = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} () | yes refl
     ⨟ᵒᵗʰ-middle-err {O₃ = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} refl | no _ = ⟨ ℓ , refl ⟩
 
+    data IsErrO : ∀ {O₁ O₂} → ⊢ᵒᵐ O₁ ⇒ O₂ → Set where
+      error : ∀ {O₁ O₂ ℓ} → IsErrO (err O₁ O₂ ℓ)
+
+    id⋆≢errᵒ : ¬ IsErrO {O₁ = ⋆} {O₂ = ⋆} id⋆
+    id⋆≢errᵒ ()
+
+    mid-src-⋆→rest-⋆ᵒ : ∀ {O₁ O₂} {m : ⊢ᵒᵐ ⋆ ⇒ O₁} {t : ⊢ᵒᵗ O₁ ⇒ O₂}
+      → ¬ IsErrO m
+      → O₁ ≡ ⋆ × O₂ ≡ ⋆
+    mid-src-⋆→rest-⋆ᵒ {m = id⋆} {t = id ⋆} m≢err = ⟨ refl , refl ⟩
+    mid-src-⋆→rest-⋆ᵒ {m = err O₁ O₂ ℓ} m≢err = ⊥-elim (m≢err error)
+
+    mid-tgt-⋆→rest-⋆ᵒ : ∀ {O₁ O₂} {h : ⊢ᵒʰ O₁ ⇒ O₂} {m : ⊢ᵒᵐ O₂ ⇒ ⋆}
+      → ¬ IsErrO m
+      → O₁ ≡ ⋆ × O₂ ≡ ⋆
+    mid-tgt-⋆→rest-⋆ᵒ {h = id ⋆} {m = id⋆} m≢err = ⟨ refl , refl ⟩
+    mid-tgt-⋆→rest-⋆ᵒ {h} {m = err O₁ O₂ ℓ} m≢err = ⊥-elim (m≢err error)
+
     _⨟ᵒᵐ_ : ∀ {O₁ O₂ O₃}
       → ⊢ᵒᵐ O₁ ⇒ O₂
       → ⊢ᵒᵐ O₂ ⇒ O₃
@@ -243,9 +278,7 @@ module Hypercoercions where
     ... | _ = h₁ ⨾ err _ O₆ ℓ ⨾ t₂
     h₁ ⨾ m₁ ⨾ t₁ ⨟ᵒ h₂ ⨾ m₂ ⨾ t₂ with t₁ ⨟ᵒᵗʰ h₂ in eq
     ... | head (id _) = h₁ ⨾ (m₁ ⨟ᵒᵐ m₂) ⨾ t₂
-    ... | tail ((Gᵒ ！) x) = h₁ ⨾ m₁ ⨾ {!!}
     ... | tail (id O) = ⊥-elim (⨟ᵒᵗʰ-tail-id-impossible {t₁ = t₁} {h₂ = h₂} eq)
-    ... | head (h₃@((_ ？ _) _)) = {!!} ⨾ m₂ ⨾ t₂
     ... | middle (err O₃ O₅ ℓ) = h₁ ⨾ err _ _ ℓ ⨾ t₂
     ... | middle (O ⇒ O') with ⨟ᵒᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = O ⇒ O'} eq
     ...   | ⟨ ℓ , () ⟩
@@ -253,6 +286,14 @@ module Hypercoercions where
     ...   | ⟨ ℓ , () ⟩
     h₁ ⨾ m₁ ⨾ t₁ ⨟ᵒ h₂ ⨾ m₂ ⨾ t₂ | middle (idι ι) with ⨟ᵒᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = idι ι} eq
     ...   | ⟨ ℓ , () ⟩
+    h₁ ⨾ m₁ ⨾ t₁ ⨟ᵒ h₂ ⨾ m₂ ⨾ t₂ | tail ((Gᵒ ！) x) with m₂
+    ...   | err O₅ O₆ ℓ = h₁ ⨾ err _ O₆ ℓ ⨾ t₂
+    ...   | id⋆ with mid-src-⋆→rest-⋆ᵒ {m = id⋆} {t = t₂} id⋆≢errᵒ
+    ...     | ⟨ refl , refl ⟩ = h₁ ⨾ m₁ ⨾ ((Gᵒ ！) x)
+    h₁ ⨾ m₁ ⨾ t₁ ⨟ᵒ h₂ ⨾ m₂ ⨾ t₂ | head (h₃@((_ ？ _) _)) with m₁
+    ...   | err O₂ O₄ ℓ = h₁ ⨾ err O₂ _ ℓ ⨾ t₂
+    ...   | id⋆ with mid-tgt-⋆→rest-⋆ᵒ {h = h₁} {m = id⋆} id⋆≢errᵒ
+    ...     | ⟨ refl , refl ⟩ = h₃ ⨾ m₂ ⨾ t₂
 
   open ObjectHypercoercions public
 
@@ -349,7 +390,7 @@ module Hypercoercions where
 
       _⨾_⨾_ : ∀ {Δ Θ} {A B B′ C}
         → Δ ⊢ᵐʰ A ⇒ B
-        → Δ ; Θ ⊢ᵐ B ⇒ B′
+        → Δ ; Θ ⊢ᵐᵐ B ⇒ B′
         → Δ ⊢ᵐᵗ B′ ⇒ C
           ------------------------ meta-hc
         → Δ ; Θ ⊢ᵐ A ⇒ C
@@ -386,56 +427,82 @@ module Hypercoercions where
     ⨟ᵐᵗʰ-middle-err {C = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} () | yes refl
     ⨟ᵐᵗʰ-middle-err {C = _} {(_ ！) g₁} {(_ ？ ℓ) g₂} {m = m} refl | no _ = ⟨ ℓ , refl ⟩
 
-    -- _⊢_⨟ᵐᵐ_ : ∀ {Δ A B C}
-    --   → (Θ : SubCtx Δ)
-    --   → Δ ; Θ ⊢ᵐᵐ A ⇒ B
-    --   → Δ ; Θ ⊢ᵐᵐ B ⇒ C
-    --   → Δ ; Θ ⊢ᵐᵐ A ⇒ C
-    -- Θ ⊢ id⋆ ⨟ᵐᵐ m₂ = m₂
-    -- Θ ⊢ idι ι ⨟ᵐᵐ m₂ = m₂
-    -- Θ ⊢ m₁ ⨟ᵐᵐ id⋆ = m₁
-    -- Θ ⊢ m₁ ⨟ᵐᵐ idι ι = m₁
-    -- Θ ⊢ err A B ℓ ⨟ᵐᵐ m₂ = err A _ ℓ
-    -- Θ ⊢ m₁ ⨟ᵐᵐ err B C ℓ = err _ C ℓ
-    -- Θ ⊢ (c₁ ⇒ c₂) ⨟ᵐᵐ (c₃ ⇒ c₄) = (Θ ⊢ c₃ ⨟ᵐ c₁) ⇒ (Θ ⊢ c₂ ⨟ᵐ c₄)
-    -- Θ ⊢ (‶ cᵒ₁ ″ cᵉ₁) ⨟ᵐᵐ (‶ cᵒ₂ ″ cᵉ₂) with cᵒ₁ ⨟ᵒ cᵒ₂ | Θ ⊢ cᵉ₁ ⨟ cᵉ₂
-    -- ... | hᵒ ⨾ err _ _ ℓ ⨾ tᵒ | _ = err (‶ _ ″ _) (‶ _ ″ _) ℓ
-    -- ... | _ | hᵉ ⨾ err _ _ ℓ ⨾ tᵉ = err (‶ _ ″ _) (‶ _ ″ _) ℓ
-    -- ... | cᵒ | cᵉ = ‶ cᵒ ″ cᵉ
-    -- Θ ⊢ ref c₁ c₂ ⨟ᵐᵐ ref c₃ c₄ = ref (Θ ⊢ c₃ ⨟ᵐ c₁) (Θ ⊢ c₂ ⨟ᵐ c₄)
-    -- Θ ⊢ ∀̇ c₁ ⨟ᵐᵐ ∀̇ c₂ = ∀̇ (⇑ᵉ-subctx Θ ⊢ c₁ ⨟ᵐ c₂)
-    -- Θ ⊢ (e₁ <: e₂ => c₁) ⨟ᵐᵐ (.e₁ <: .e₂ => c₂) = e₁ <: e₂ => (Θ , e₁ <: e₂ ⊢ c₁ ⨟ᵐ c₂)
+    data IsErrM : ∀ {Δ Θ A B} → Δ ; Θ ⊢ᵐᵐ A ⇒ B → Set where
+      error : ∀ {Δ Θ A B ℓ} → IsErrM (err {Δ} {Θ} A B ℓ)
 
-    -- _⊢_⨟ᵐ_ : ∀ {Δ A B C}
-    --   → (Θ : SubCtx Δ)
-    --   → Δ ; Θ ⊢ᵐ A ⇒ B
-    --   → Δ ; Θ ⊢ᵐ B ⇒ C
-    --   → Δ ; Θ ⊢ᵐ A ⇒ C
-    -- Θ ⊢ h₁ ⨾ err A B ℓ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ =
-    --   h₁ ⨾ err A _ ℓ ⨾ t₂
-    -- Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ err B C ℓ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵐᵗʰ h₂
-    -- ... | middle (err A′ B′ ℓ′) = h₁ ⨾ err _ C ℓ′ ⨾ t₂
-    -- ... | _ = h₁ ⨾ err _ C ℓ ⨾ t₂
-    -- Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ in eq
-    -- ... | head (id _) = h₁ ⨾ (Θ ⊢ m₁ ⨟ᵐᵐ m₂) ⨾ t₂
-    -- ... | tail ((G ！) g) = h₁ ⨾ m₁ ⨾ ((G ！) g)
-    -- ... | tail (id A) = ⊥-elim (⨟ᵐᵗʰ-tail-id-impossible {t₁ = t₁} {h₂ = h₂} eq)
-    -- ... | head (h₃@((_ ？ _) _)) = h₃ ⨾ m₂ ⨾ t₂
-    -- ... | middle (c₁ ⇒ c₂) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = c₁ ⇒ c₂} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (‶ cᵒ ″ cᵉ) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ‶ cᵒ ″ cᵉ} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (ref c₁ c₂) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ref c₁ c₂} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (∀̇ c) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ∀̇ c} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (e₁ <: e₂ => c) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = e₁ <: e₂ => c} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle id⋆ with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = id⋆} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (idι ι) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = idι ι} eq
-    -- ...   | ⟨ ℓ , () ⟩
-    -- ... | middle (err A B ℓ) = h₁ ⨾ err _ _ ℓ ⨾ t₂
+    id⋆≢errᵐ : ∀ {Δ Θ} → ¬ IsErrM {Δ} {Θ} {⋆} {⋆} (id⋆ {Δ} {Θ})
+    id⋆≢errᵐ ()
+
+    mid-src-⋆→rest-⋆ᵐ : ∀ {Δ Θ A B} {m : Δ ; Θ ⊢ᵐᵐ ⋆ ⇒ A} {t : Δ ⊢ᵐᵗ A ⇒ B}
+      → ¬ IsErrM m
+      → A ≡ ⋆ × B ≡ ⋆
+    mid-src-⋆→rest-⋆ᵐ {m = id⋆} {t = id ⋆} m≢err = ⟨ refl , refl ⟩
+    mid-src-⋆→rest-⋆ᵐ {m = err A B ℓ} m≢err = ⊥-elim (m≢err error)
+
+    mid-tgt-⋆→rest-⋆ᵐ : ∀ {Δ Θ A B} {h : Δ ⊢ᵐʰ A ⇒ B} {m : Δ ; Θ ⊢ᵐᵐ B ⇒ ⋆}
+      → ¬ IsErrM m
+      → A ≡ ⋆ × B ≡ ⋆
+    mid-tgt-⋆→rest-⋆ᵐ {h = id ⋆} {m = id⋆} m≢err = ⟨ refl , refl ⟩
+    mid-tgt-⋆→rest-⋆ᵐ {m = err A B ℓ} m≢err = ⊥-elim (m≢err error)
+
+    _⊢_⨟ᵐᵐ_ : ∀ {Δ A B C}
+      → (Θ : SubCtx Δ)
+      → Δ ; Θ ⊢ᵐᵐ A ⇒ B
+      → Δ ; Θ ⊢ᵐᵐ B ⇒ C
+      → Δ ; Θ ⊢ᵐᵐ A ⇒ C
+    _⊢_⨟ᵐ_ : ∀ {Δ A B C}
+      → (Θ : SubCtx Δ)
+      → Δ ; Θ ⊢ᵐ A ⇒ B
+      → Δ ; Θ ⊢ᵐ B ⇒ C
+      → Δ ; Θ ⊢ᵐ A ⇒ C
+
+    Θ ⊢ id⋆ ⨟ᵐᵐ m₂ = m₂
+    Θ ⊢ idι ι ⨟ᵐᵐ m₂ = m₂
+    Θ ⊢ m₁ ⨟ᵐᵐ id⋆ = m₁
+    Θ ⊢ m₁ ⨟ᵐᵐ idι ι = m₁
+    Θ ⊢ err A B ℓ ⨟ᵐᵐ m₂ = err A _ ℓ
+    Θ ⊢ m₁ ⨟ᵐᵐ err B C ℓ = err _ C ℓ
+    Θ ⊢ (c₁ ⇒ c₂) ⨟ᵐᵐ (c₃ ⇒ c₄) = (Θ ⊢ c₃ ⨟ᵐ c₁) ⇒ (Θ ⊢ c₂ ⨟ᵐ c₄)
+    Θ ⊢ (‶ cᵒ₁ ″ cᵉ₁) ⨟ᵐᵐ (‶ cᵒ₂ ″ cᵉ₂) with cᵒ₁ ⨟ᵒ cᵒ₂ | Θ ⊢ cᵉ₁ ⨟ᵉ cᵉ₂
+    ... | hᵒ ⨾ err _ _ ℓ ⨾ tᵒ | _ = err (‶ _ ″ _) (‶ _ ″ _) ℓ
+    ... | _ | hᵉ ⨾ err _ _ ℓ ⨾ tᵉ = err (‶ _ ″ _) (‶ _ ″ _) ℓ
+    ... | cᵒ | cᵉ = ‶ cᵒ ″ cᵉ
+    Θ ⊢ ref c₁ c₂ ⨟ᵐᵐ ref c₃ c₄ = ref (Θ ⊢ c₃ ⨟ᵐ c₁) (Θ ⊢ c₂ ⨟ᵐ c₄)
+    Θ ⊢ ∀̇ c₁ ⨟ᵐᵐ ∀̇ c₂ = ∀̇ (⇑ᵉ-subctx Θ ⊢ c₁ ⨟ᵐ c₂)
+    Θ ⊢ (e₁ <: e₂ => c₁) ⨟ᵐᵐ (.e₁ <: .e₂ => c₂) = e₁ <: e₂ => ((Θ , e₁ <: e₂) ⊢ c₁ ⨟ᵐ c₂)
+
+    Θ ⊢ h₁ ⨾ (err A B ℓ) ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ =
+      h₁ ⨾ err A _ ℓ ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ err B C ℓ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵐᵗʰ h₂
+    ... | middle (err A′ B′ ℓ′) = h₁ ⨾ err _ C ℓ′ ⨾ t₂
+    ... | _ = h₁ ⨾ err _ C ℓ ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ with Θ ⊢ t₁ ⨟ᵐᵗʰ h₂ in eq
+    ... | head (id _) = h₁ ⨾ (Θ ⊢ m₁ ⨟ᵐᵐ m₂) ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | tail ((G ！) g) with m₂
+    ... | err A B ℓ = h₁ ⨾ err _ B ℓ ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | tail ((G ！) g) | id⋆ with t₂
+    ... | id ⋆ = h₁ ⨾ m₁ ⨾ ((G ！) g)
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | tail (id A) =
+      ⊥-elim (⨟ᵐᵗʰ-tail-id-impossible {t₁ = t₁} {h₂ = h₂} eq)
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | head (h₃@((_ ？ _) _)) with m₁
+    ... | err A B ℓ = h₁ ⨾ err A _ ℓ ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | head (h₃@((_ ？ _) _)) | id⋆ with h₁
+    ... | id ⋆ = h₃ ⨾ m₂ ⨾ t₂
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (c₁ ⇒ c₂) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = c₁ ⇒ c₂} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (‶ cᵒ ″ cᵉ) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ‶ cᵒ ″ cᵉ} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (ref c₁ c₂) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ref c₁ c₂} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (∀̇ c) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = ∀̇ c} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (e₁ <: e₂ => c) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = e₁ <: e₂ => c} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle id⋆ with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = id⋆} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (idι ι) with ⨟ᵐᵗʰ-middle-err {t₁ = t₁} {h₂ = h₂} {m = idι ι} eq
+    ...   | ⟨ ℓ , () ⟩
+    Θ ⊢ h₁ ⨾ m₁ ⨾ t₁ ⨟ᵐ h₂ ⨾ m₂ ⨾ t₂ | middle (err A B ℓ) = h₁ ⨾ err _ _ ℓ ⨾ t₂
 
     -- data IsProj : ∀ {Δ Θ} {A B} → (c : Δ ; Θ ⊢ᵐ A ⇒ B) → Set where
     --   proj : ∀{Δ}{Θ}{H : MType Δ}{h : Ground H}{ℓ} → IsProj{Δ}{Θ} ((H ？ ℓ) h)

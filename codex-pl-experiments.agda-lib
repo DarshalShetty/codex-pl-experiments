@@ -1,0 +1,6 @@
+name: codex-pl-experiments
+include: .
+depend:
+  standard-library
+  plfa
+  abt
